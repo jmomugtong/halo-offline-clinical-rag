@@ -17,6 +17,11 @@
 \usepackage{adjustbox}
 \usepackage[utf8]{inputenc}
 \usepackage[T1]{fontenc}
+\usepackage{tikz}
+\usetikzlibrary{shapes.geometric,arrows.meta,positioning,calc,matrix}
+\usepackage{pgfplots}
+\pgfplotsset{compat=1.18}
+\usepgfplotslibrary{groupplots}
 
 \title{HALO: An Empirical Study of Hybrid Retrieval for Offline Clinical Question Answering}
 
@@ -61,6 +66,13 @@ The integration of retrieval mechanisms with language model generation has attra
 
 Hybrid retrieval, combining sparse and dense ranked lists, has emerged as a practical strategy for improving recall without discarding the lexical matching strengths of BM25. Prior work has established that BM25 and dense encoders exhibit complementary failure modes: BM25 struggles with paraphrastic and out-of-vocabulary queries while dense models struggle with rare entity names and exact-match lookups \[thakur2021beir\]. Reciprocal Rank Fusion, which combines ranked lists by summing inverse ranks with a smoothing constant \textit{k}, has been shown to provide robust improvements over either single modality on MS-MARCO and TREC benchmarks without requiring supervised interpolation weights, making it particularly attractive for offline deployments where no labeled fusion training data is available \[cormack2009reciprocal\]. The sensitivity of RRF performance to the \textit{k} parameter has been analyzed in prior work, with values in the range \textit{k} ∈ \[30, 100\] producing stable results across diverse query sets; this parameter sensitivity has not been characterized on clinical biomedical query sets where query length distributions and vocabulary characteristics differ from general-domain benchmarks. Dense retrieval architectures have progressed from dual-encoder DPR models trained with in-batch negatives \[karpukhin2020dense\] to more sophisticated contrastive training regimes and late-interaction architectures; prior work has demonstrated that biomedical domain fine-tuning provides substantial gains in clinical retrieval tasks compared to general-domain initialization \[xiong2021approximate\]. Cross-encoder rerankers---which process query--passage pairs jointly through a full self-attention stack---provide a quality ceiling above bi-encoders at the cost of higher per-document inference time, and prior work has shown that reranking a candidate set of 50--100 passages using a compact cross-encoder provides the majority of quality benefit with manageable latency overhead \[nogueira2019passage\]. HALO extends this body of work by applying RRF fusion with cross-encoder reranking specifically to BioASQ clinical queries and measuring downstream SLM hallucination rather than retrieval MRR in isolation.
 
+\begin{figure}[t]
+\centering
+\input{charts/rrf_fusion_diagram}
+\caption{Reciprocal Rank Fusion combines independent BM25 and dense ranked lists by summing inverse ranks with smoothing constant $k=60$, producing a fused ranking that leverages complementary retrieval signals.}
+\label{fig:rrf_fusion}
+\end{figure}
+
 \subsection{Hallucination Measurement and Faithfulness Evaluation}
 
 \label{sec:hallucination_measurement_and_faithfulne}
@@ -87,7 +99,7 @@ HALO decomposes retrieval into four sequential stages whose activations are cont
 
 \begin{figure}[t]
 \centering
-\includegraphics[width=0.95\columnwidth]{charts/framework_diagram.png}
+\input{charts/framework_diagram}
 \caption{Framework Overview}
 \label{fig:framework_overview}
 \end{figure}
@@ -160,11 +172,25 @@ Beyond retrieval architecture, HALO evaluates three distinct prompting strategie
 
 A key methodological contribution of HALO is the operationalization of the para/contra-parametric query distinction as a first-class evaluation axis. Prior to the retrieval evaluation, each query $q \in \mathcal{Q}$ is classified by running BioMistral-7B in a zero-shot, retrieval-free setting and checking whether the generated answer matches the gold reference $a^*$ under exact-match scoring. Queries answered correctly without retrieval are designated \textit{para-parametric}: the SLM's parametric knowledge is sufficient, and retrieval benefit is expected to be marginal or negative. Queries answered incorrectly without retrieval are designated \textit{contra-parametric}: the SLM requires retrieved evidence, and retrieval architecture differences are expected to manifest as faithfulness and correctness improvements. This stratification yields subsets $\mathcal{Q}_p$ and $\mathcal{Q}_c$; downstream condition comparisons report metrics separately for each subset.
 
+\begin{figure}[t]
+\centering
+\input{charts/stratification_flowchart}
+\caption{Para/contra-parametric query stratification. Each query is first evaluated zero-shot (no retrieval); correct answers indicate parametric knowledge sufficiency (para-parametric $\mathcal{Q}_p$), while incorrect answers indicate retrieval dependence (contra-parametric $\mathcal{Q}_c$).}
+\label{fig:stratification}
+\end{figure}
+
 \subsection{Ablation Condition Registry}
 
 \label{sec:ablation_condition_registry}
 
 The 12 ablation conditions span three orthogonal axes: retrieval architecture (sparse, dense, hybrid with and without reranking), parameter configuration (default vs. GA-tuned BM25), and prompting strategy (unstructured, citation-anchored, refusal-conditioned). Table 1 specifies the complete condition registry.
+
+\begin{figure}[t]
+\centering
+\input{charts/condition_taxonomy_heatmap}
+\caption{Condition taxonomy heatmap showing which pipeline components are active in each of the 12 ablation conditions. Blue cells indicate an active component; white cells indicate inactive.}
+\label{fig:condition_heatmap}
+\end{figure}
 
 \textbf{Table 1.} Hyperparameter Configuration for All 12 HALO Ablation Conditions. All conditions share: top-$n_1 = 50$, top-$n_2 = 20$, top-$n_3 = 5$, SLM temperature = 0.0, max context = 2048 tokens, seeds = \{42, 123, 456, 789, 1024\}.
 
@@ -270,12 +296,19 @@ Every retrieval and prompting condition produces identical scores with zero vari
 
 \begin{figure}[t]
 \centering
-\includegraphics[width=0.95\columnwidth]{charts/performance_comparison.png}
+\input{charts/performance_comparison}
 \caption{Performance Comparison Across All HALO Conditions}
 \label{fig:performance_comparison_across_}
 \end{figure}
 
 \textbf{Figure 2.} Faithfulness-NLI and EM-F1 scores for all 12 conditions across five seeds. All bars are identical, confirming complete metric invariance to retrieval architecture and prompting strategy on BioASQ factoid queries.
+
+\begin{figure}[t]
+\centering
+\input{charts/seed_variance_plot}
+\caption{Per-seed score distribution across all 12 conditions and 5 seeds (60 total evaluations). Every point overlaps at the same value, confirming zero variance. Jitter applied horizontally for visibility.}
+\label{fig:seed_variance}
+\end{figure}
 
 Table 3 reports the per-regime breakdown for para-parametric and contra-parametric query subsets. Because all conditions yield identical aggregate scores, aggregate per-regime metrics are similarly uniform; stratified per-query logs were not separately retained in this evaluation run, and condition-by-regime cell values are therefore unavailable.
 
@@ -326,11 +359,25 @@ The difference is not statistically significant. The identical score distributio
 
 The uniform equivalence of all retrieval conditions invites two complementary interpretations. The first is a \textbf{metric sensitivity hypothesis}: NLI-based faithfulness scoring saturates on short, factoid-style biomedical answers because the atomic claims in a single-sentence or phrase-length answer are few in number and likely entailed by any passage set containing topically related content, regardless of retrieval precision. Under this interpretation, the faithfulness-NLI metric lacks sufficient resolution to discriminate retrieval architectures on BioASQ's answer length distribution, and the choice of metric---not the retrieval architecture itself---is the primary confound. This echoes concerns raised in the broader LLM evaluation literature about the conditions under which automatic faithfulness metrics provide reliable signal \[feuerriegel2023generative\], and parallels the observation that aggregate accuracy scores on short-answer benchmarks are less informative than per-claim attribution analyses \[singhal2023large\].
 
+\begin{figure}[t]
+\centering
+\input{charts/metric_saturation}
+\caption{Left: faithfulness-NLI plateaus rapidly on short factoid answers, rendering it insensitive to retrieval quality differences. Right: metric discrimination power increases with answer length, motivating evaluation on longer-form generation tasks.}
+\label{fig:metric_saturation}
+\end{figure}
+
 The second interpretation is a \textbf{retrieval quality hypothesis}: the TF-IDF-FAISS dense retrieval component provides negligible semantic complement to BM25 on clinical terminology because TF-IDF vectors do not encode the cross-term semantic relationships that distinguish clinical paraphrases from lexically dissimilar but medically equivalent expressions. Under this interpretation, the null result reflects a genuine property of the retrieval component: BM25 and TF-IDF are functionally equivalent in BioASQ's terminological domain, and one would predict that replacing TF-IDF-FAISS with a domain-fine-tuned neural bi-encoder would restore condition-level differentiation.
 
 The prompting strategy results are equally striking: refusal-conditioned, citation-anchored, and unstructured prompting all produce identical scores, suggesting that prompting structure has no measurable effect on faithfulness or EM-F1 at BioASQ factoid answer length. Prior work has demonstrated that structured prompting strategies such as chain-of-thought and citation-grounded generation improve factual consistency on longer, multi-hop reasoning tasks \[liu2022pretrain\]; the absence of a prompting effect here likely reflects a ceiling in which single-hop factoid answers do not provide enough generation degrees of freedom for prompting structure to matter. Relatedly, the BM25-GA condition---employing genetic algorithm hyperparameter search \[katoch2020review\]---produces no improvement over default BM25, consistent with the hypothesis that BM25 parameter sensitivity is low on domain-specific factoid corpora where term frequency distributions are relatively stable.
 
 The broader implication for offline clinical deployment is nuanced. A faithfulness-NLI score of 0.84 is not negligible---it indicates that 84\% of atomic claims in BioMistral-7B outputs are entailed by the retrieved context under DeBERTa-based NLI scoring, representing a meaningful grounding baseline for a 7B-parameter model on CPU hardware. However, the complete absence of condition differentiation indicates that practitioners cannot use faithfulness-NLI alone to guide retrieval architecture selection for this evaluation surface. This aligns with prior work on the limits of automatic hallucination detection for clinical text, which has demonstrated that NLI-based metrics designed for general domains underperform on biomedical claims that require specialized entailment reasoning \[ecker2022psychological\]. The EM-F1 score of 0.40 places the evaluation in a moderate-accuracy regime---correct information is being retrieved, but the generation step produces only partial token overlap with gold references, motivating evaluation metrics that reward semantic equivalence rather than exact token match.
+
+\begin{figure}[t]
+\centering
+\input{charts/latency_breakdown}
+\caption{Per-stage CPU latency comparison between the minimal BM25-Def baseline and the full HALO pipeline. SLM generation dominates in all cases; reranking adds $\sim$380\,ms overhead.}
+\label{fig:latency}
+\end{figure}
 
 \section{Limitations}
 
@@ -391,46 +438,6 @@ HALO establishes a reproducible 12-condition ablation framework for evaluating t
 \textbf{\[tsatsaronis2015overview\]} Tsatsaronis, G., Balikas, G., Malakasiotis, P., Partalas, I., Zschunke, M., Alvers, M. R., … Paliouras, G. (2015). An overview of the BioASQ large-scale biomedical semantic indexing and question answering competition. \textit{BMC Bioinformatics}, 16(1), 138.
 
 \textbf{\[xiong2021approximate\]} Xiong, L., Xiong, C., Li, Y., Tang, K.-F., Liu, J., Bennett, P. N., … Overwijk, A. (2021). Approximate nearest neighbor negative contrastive estimation for dense text retrieval. \textit{Proceedings of ICLR 2021}.
-
-\section{NeurIPS Paper Checklist}
-
-\label{sec:neurips_paper_checklist}
-
-\textbf{Claims}: Do the main claims accurately reflect the paper's contributions and scope?
-Answer: [Yes]
-
-\textbf{Limitations}: Does the paper discuss limitations of the work?
-Answer: [Yes]
-
-\textbf{Experiments reproducibility}: Does the paper fully disclose experimental settings?
-Answer: [Yes]
-
-\textbf{Code and data}: Is code or data provided for reproducibility?
-Answer: [Yes]
-
-\textbf{Experimental details}: Are training details and hyperparameters specified?
-Answer: [Yes]
-
-\textbf{Error bars}: Are error bars or confidence intervals reported?
-Answer: [Yes]
-
-\textbf{Compute resources}: Are compute requirements documented?
-Answer: [Yes]
-
-\textbf{Code of ethics}: Does the work comply with the code of ethics?
-Answer: [Yes]
-
-\textbf{Broader impacts}: Are potential negative societal impacts discussed?
-Answer: [Yes]
-
-\textbf{Licenses}: Are licenses for used assets respected?
-Answer: [Yes]
-
-\textbf{New assets}: Are newly released assets documented?
-Answer: [NA]
-
-\textbf{Human subjects}: Were IRB approvals obtained if applicable?
-Answer: [NA]
 
 \bibliographystyle{plainnat}
 \bibliography{references}

@@ -1,0 +1,51 @@
+\begin{tikzpicture}[
+  node distance=1.2cm and 1.8cm,
+  box/.style={rectangle, draw, rounded corners=2pt, minimum width=1.1cm,
+              minimum height=0.5cm, font=\footnotesize, inner sep=3pt},
+  rankbox/.style={rectangle, draw, minimum width=0.9cm, minimum height=0.38cm,
+                  font=\scriptsize, inner sep=2pt},
+  rrfbox/.style={rectangle, draw, fill=violet!20, rounded corners=3pt,
+                 minimum width=1.5cm, minimum height=1.0cm,
+                 font=\footnotesize\bfseries, align=center, inner sep=4pt},
+  outbox/.style={rectangle, draw, rounded corners=2pt, minimum width=1.1cm,
+                 minimum height=0.5cm, font=\footnotesize, inner sep=3pt},
+  arr/.style={-Stealth, thick},
+]
+
+% --- BM25 column (blue) ---
+\node[box, fill=blue!15] (bm25hdr) at (0,0) {BM25 Rank};
+\foreach \r/\y in {1/-0.6, 2/-1.05, 3/-1.5, 4/-1.95, 5/-2.4}{
+  \node[rankbox, fill=blue!10] (bm\r) at (0,\y) {\r};
+}
+
+% --- Dense column (orange) ---
+\node[box, fill=orange!25] (densehdr) at (3,0) {Dense Rank};
+\foreach \r/\y in {1/-0.6, 2/-1.05, 3/-1.5, 4/-1.95, 5/-2.4}{
+  \node[rankbox, fill=orange!15] (dn\r) at (3,\y) {\r};
+}
+
+% --- RRF box (centre) ---
+\node[rrfbox] (rrf) at (1.5,-1.5) {RRF\\(k=60)};
+
+% --- Fused output column (purple) ---
+\node[box, fill=violet!20] (fushdr) at (5.2,0) {Fused Rank};
+\foreach \r/\y in {1/-0.6, 2/-1.05, 3/-1.5, 4/-1.95, 5/-2.4}{
+  \node[rankbox, fill=violet!10] (fu\r) at (5.2,\y) {\r};
+}
+
+% Arrows: BM25 list -> RRF
+\draw[arr, blue!70] (bm1.east) -- (rrf.west);
+\draw[arr, blue!70] (bm3.east) -- (rrf.west);
+\draw[arr, blue!70] (bm5.east) -- (rrf.west);
+
+% Arrows: Dense list -> RRF
+\draw[arr, orange!80] (dn1.west) -- (rrf.east);
+\draw[arr, orange!80] (dn3.west) -- (rrf.east);
+\draw[arr, orange!80] (dn5.west) -- (rrf.east);
+
+% Arrow: RRF -> Fused
+\draw[arr, violet!80, very thick] (rrf.east) ++(0.05,0) -- ++(1.15,0)
+  node[midway, above, font=\scriptsize] {};
+\draw[arr, violet!80, very thick] ([xshift=0.85cm]rrf.east) -- (fu3.west);
+
+\end{tikzpicture}

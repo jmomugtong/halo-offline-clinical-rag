@@ -1,0 +1,34 @@
+\begin{tikzpicture}[
+  node distance=0.5cm,
+  stage/.style={rectangle, draw, rounded corners=3pt, align=center,
+                minimum width=2.0cm, minimum height=1.4cm,
+                font=\scriptsize, inner sep=4pt},
+  slm/.style={rectangle, draw, rounded corners=3pt, align=center,
+              minimum width=2.0cm, minimum height=1.4cm,
+              font=\scriptsize\bfseries, inner sep=4pt, fill=green!20},
+  lbl/.style={font=\scriptsize\itshape, text=gray},
+  arr/.style={-Stealth, thick},
+]
+
+\node[stage, fill=blue!10]  (s1) at (0,0)
+    {BM25 Sparse\\Retrieval\\(top-50)};
+\node[stage, fill=blue!20, right=0.6cm of s1] (s2)
+    {TF-IDF/FAISS\\Dense Retrieval\\(top-50)};
+\node[stage, fill=blue!35, right=0.6cm of s2] (s3)
+    {RRF Fusion\\(k=60)\\(top-20)};
+\node[stage, fill=blue!55, text=white, right=0.6cm of s3] (s4)
+    {Cross-Encoder\\Reranker\\(top-5)};
+\node[slm, right=0.6cm of s4] (slm)
+    {SLM Generation\\(BioMistral-7B)};
+
+\draw[arr] (s1) -- (s2);
+\draw[arr] (s2) -- (s3);
+\draw[arr] (s3) -- (s4);
+\draw[arr] (s4) -- (slm);
+
+\node[lbl, below=0.15cm of s1]  {Stage 1};
+\node[lbl, below=0.15cm of s2]  {Stage 2};
+\node[lbl, below=0.15cm of s3]  {Stage 3};
+\node[lbl, below=0.15cm of s4]  {Stage 4};
+
+\end{tikzpicture}
