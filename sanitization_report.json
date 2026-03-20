@@ -1,0 +1,30 @@
+{
+  "sanitized": true,
+  "tables_processed": 4,
+  "numbers_replaced": 53,
+  "numbers_kept": 43,
+  "verified_values_count": 6,
+  "replaced_samples": [
+    "5",
+    "5",
+    "5",
+    "5",
+    "5",
+    "60",
+    "5",
+    "5",
+    "5",
+    "5",
+    "5",
+    "60",
+    "5",
+    "5",
+    "5",
+    "5",
+    "5",
+    "60",
+    "5",
+    "5"
+  ],
+  "generated": "2026-03-19T11:42:35+00:00"
+}

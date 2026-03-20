@@ -1,0 +1,12 @@
+{
+  "summary": {
+    "total": 0,
+    "verified": 0,
+    "suspicious": 0,
+    "hallucinated": 0,
+    "skipped": 0,
+    "integrity_score": 1.0
+  },
+  "results": [],
+  "note": "No references.bib found \u2014 nothing to verify."
+}
