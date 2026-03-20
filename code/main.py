@@ -319,6 +319,7 @@ def main():
                     'em_mean': e_mean,
                 }
                 harness.report_metric('ragas_faithfulness_nli', f_mean)
+                harness.report_metric('em_f1', e_mean)
                 print(f'condition={cname} seed={seed} '
                       f'ragas_faithfulness_nli: {f_mean:.4f} em_f1: {e_mean:.4f}')
             except Exception as e:
