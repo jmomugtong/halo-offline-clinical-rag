@@ -3,7 +3,7 @@
   startbox/.style={rectangle, draw, rounded corners=4pt, fill=gray!10,
                    align=center, font=\small, inner sep=6pt,
                    minimum width=2.8cm},
-  diamond/.style={diamond, draw, fill=yellow!15, align=center,
+  diabox/.style={diamond, draw, fill=yellow!15, align=center,
                   font=\scriptsize, inner sep=3pt,
                   aspect=2.2, minimum width=3.8cm, minimum height=1.0cm},
   parabox/.style={rectangle, draw, rounded corners=4pt, fill=green!15,
@@ -18,7 +18,7 @@
 
 \node[startbox] (query) {Query $q \in \mathcal{Q}$};
 
-\node[diamond, below=0.9cm of query] (dec)
+\node[diabox, below=0.9cm of query] (dec)
     {BioMistral-7B correct\\zero-shot?};
 
 \node[parabox, below left=1.1cm and 1.4cm of dec] (para)
