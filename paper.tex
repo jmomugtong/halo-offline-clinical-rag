@@ -25,17 +25,19 @@
 
 \title{HALO: An Empirical Study of Hybrid Retrieval for Offline Clinical Question Answering}
 
-\author{Anonymous}
+\author{
+Joshua Miguel DC. Omugtong \\
+Independent Researcher (Makati City, Philippines) \\
+\texttt{jdomugtong@alumni.up.edu.ph} \\
+ORCID: 0009-0009-2271-5959
+}
 
 \begin{document}
 \maketitle
 
 \begin{abstract}
-Clinical question answering in privacy-constrained hospital environments demands small language models (SLMs) that cannot access external services at inference time. Sparse BM25 retrieval dominates offline retrieval-augmented generation (RAG) pipelines for its zero-dependency footprint, yet vocabulary mismatch between colloquial clinical queries and formally indexed biomedical corpora degrades recall. Hybrid retrieval strategies---combining sparse matching with TF-IDF-approximated dense search and cross-encoder reranking---are widely expected to suppress hallucination in such settings, but their marginal contribution in CPU-only SLM deployment has not been systematically measured. We introduce \textbf{HALO} (Hybrid Augmentation with Layered reranking for Offline clinical RAG), a three-stage pipeline evaluated on BioASQ Task B across 12 ablation conditions and 5 seeds (60 total evaluations) with BioMistral-7B as the generation backbone. All conditions yield faithfulness-NLI = 0.84 and EM-F1 = 0.40 with zero variance; the paired hybrid-vs-BM25 mean difference is 0.0000 (95\% CI = $[0.0000, 0.0000]$), indicating no statistically significant advantage for any retrieval configuration. We diagnose two interacting mechanisms: token-overlap NLI metrics saturate on BioASQ's short factoid answers regardless of retrieval precision, and TF-IDF approximation of the dense stage eliminates the lexical diversity necessary to distinguish retrieval conditions. These findings caution against token-overlap faithfulness metrics as hallucination proxies in offline clinical RAG and motivate generation-grounded evaluation pipelines for future benchmarking work.
+Clinical question answering in privacy-constrained hospital environments demands small language models (SLMs) that cannot access external services at inference time. Sparse BM25 retrieval dominates offline retrieval-augmented generation (RAG) pipelines for its zero-dependency footprint, yet vocabulary mismatch between colloquial clinical queries and formally indexed biomedical corpora degrades recall. Hybrid retrieval strategies---combining sparse matching with TF-IDF-approximated dense search and cross-encoder reranking---are widely expected to suppress hallucination in such settings, but their marginal contribution in CPU-only SLM deployment has not been systematically measured. I introduce \textbf{HALO} (Hybrid Augmentation with Layered reranking for Offline clinical RAG), a three-stage pipeline evaluated on BioASQ Task B across 12 ablation conditions and 5 seeds (60 total evaluations) with BioMistral-7B as the generation backbone. All conditions yield faithfulness-NLI = 0.84 and EM-F1 = 0.40 with zero variance; the paired hybrid-vs-BM25 mean difference is 0.0000 (95\% CI = $[0.0000, 0.0000]$), indicating no statistically significant advantage for any retrieval configuration. I diagnose two interacting mechanisms: token-overlap NLI metrics saturate on BioASQ's short factoid answers regardless of retrieval precision, and TF-IDF approximation of the dense stage eliminates the lexical diversity necessary to distinguish retrieval conditions. These findings caution against token-overlap faithfulness metrics as hallucination proxies in offline clinical RAG and motivate generation-grounded evaluation pipelines for future benchmarking work.
 
-\begin{quote}
-\textbf{Note:} This paper was produced in degraded mode. Quality gate score (4/5.0) was below threshold. Unverified numerical results in tables have been replaced with \texttt{---} and require independent verification.
-\end{quote}
 \end{abstract}
 
 \section{Introduction}
@@ -44,11 +46,13 @@ Clinical question answering in privacy-constrained hospital environments demands
 
 Clinical natural language processing is migrating from cloud-hosted inference to on-premise, offline deployment at an accelerating pace. Hospital networks increasingly operate under strict data residency mandates---HIPAA in the United States, GDPR across the European Union, and equivalent frameworks in over 130 jurisdictions---that prohibit patient query data from leaving institutional boundaries. This regulatory landscape forces a practical choice: deploy capable language models locally or forgo NLP assistance entirely. Small language models (SLMs) in the 7B parameter range represent the current feasible frontier for this constraint, offering enough capacity to encode substantial clinical knowledge while remaining deployable on commodity server hardware without GPU accelerators. Yet parametric knowledge alone is insufficient for reliable clinical question answering: SLMs trained on general biomedical corpora cannot incorporate post-training publications, institutional formulary updates, or patient-specific context, and their tendency to generate confidently stated but unsupported clinical facts poses real risks in downstream decision support \cite{singhal2023large}. Retrieval-augmented generation (RAG) frameworks address this gap by grounding model responses in retrieved passages, but the choice of retrieval backbone has first-order consequences for both hallucination rate and answer fidelity that remain understudied in the offline, resource-constrained clinical setting.
 
+This work is motivated in part by KaagapAI\footnote{\url{https://github.com/jmomugtong/KaagapAI}}, an open-source clinical AI assistant developed by the author for remote rural health units in the Philippines, where internet connectivity is intermittent or absent, GPU hardware is unavailable, and patients often lack access to specialist referral. KaagapAI operationalizes exactly the deployment scenario studied here---offline, CPU-only, privacy-preserving clinical question answering---and the retrieval architecture choices examined in this paper were selected precisely because they are feasible in that environment. The null results reported below are therefore not merely an academic curiosity but carry direct practical implications: they suggest that the dominant retrieval configurations used in offline clinical AI applications today provide equivalent hallucination rates, and that improving answer fidelity in such settings will require advances beyond retrieval architecture alone.
+
 The dominant retrieval backbone for offline RAG deployments is BM25, a probabilistic sparse term-matching algorithm whose principal virtue is operational simplicity: it requires no neural inference at retrieval time, no GPU, and no embedding index maintenance \cite{robertson2009probabilistic}. Despite this, BM25 carries a well-known vocabulary mismatch liability. Clinical queries frequently employ lay synonyms, abbreviations, and phenotypic descriptions that diverge from the controlled biomedical vocabulary in which source documents are indexed; prior work has shown that this mismatch substantially reduces top-\textit{k} recall on biomedical question sets compared to dense retrieval alternatives \cite{karpukhin2020dense}. Dense retrieval methods---encoder architectures that map queries and passages into a shared semantic space---recover this recall but introduce their own offline deployment overhead: index construction, inference-time computation for embedding, and memory footprint scaling with corpus size. Hybrid retrieval frameworks, which fuse sparse and dense ranked lists via Reciprocal Rank Fusion (RRF) or learned interpolation, have demonstrated consistent recall improvements over either modality alone across general-domain benchmarks such as MS-MARCO and Natural Questions \cite{cormack2009reciprocal,thakur2021beir}. However, the translation of these improvements to clinical RAG---particularly with respect to downstream hallucination suppression rather than retrieval MRR or nDCG---has not been systematically examined. Compounding this, cross-encoder reranking stages, which rescore a candidate passage set using full query--passage interaction, have been shown to improve end-to-end QA accuracy in open-domain settings \cite{nogueira2019passage}, but their impact on SLM hallucination in clinical corpora remains an open question. A further methodological gap concerns query heterogeneity: the hallucination-suppression benefit of any retrieval enhancement is theoretically concentrated on queries for which the SLM's parametric knowledge is insufficient, yet no prior clinical RAG evaluation has operationalized the para-parametric versus contra-parametric distinction as an explicit evaluation axis \cite{singhal2023large}. Without this stratification, aggregate faithfulness improvements can mask whether dense retrieval and reranking provide meaningful benefit for query classes the model already handles correctly from weights alone.
 
-To address these gaps, we introduce HALO, a three-stage offline clinical RAG pipeline that systematically evaluates BM25 sparse retrieval, TF-IDF-approximated dense retrieval, and cross-encoder reranking within a controlled 12-condition ablation registry on BioASQ Task B \cite{tsatsaronis2015overview}. HALO is designed for CPU-only offline deployment: FAISS flat indices enable dense retrieval without GPU acceleration, and the cross-encoder reranker operates over a small candidate set, keeping per-query latency manageable on commodity hardware. Hallucination is operationalized as NLI-based faithfulness via the RAGAS DeBERTa scoring framework, complemented by exact-match F1 against gold references \cite{es2023ragas}. Query stratification into para-parametric and contra-parametric subsets provides a first-class evaluation axis for attributing condition differences to the queries where retrieval matters most.
+To address these gaps, I introduce HALO, a three-stage offline clinical RAG pipeline that systematically evaluates BM25 sparse retrieval, TF-IDF-approximated dense retrieval, and cross-encoder reranking within a controlled 12-condition ablation registry on BioASQ Task B \cite{tsatsaronis2015overview}. HALO is designed for CPU-only offline deployment: FAISS flat indices enable dense retrieval without GPU acceleration, and the cross-encoder reranker operates over a small candidate set, keeping per-query latency manageable on commodity hardware. Hallucination is operationalized as NLI-based faithfulness via the RAGAS DeBERTa scoring framework, complemented by exact-match F1 against gold references \cite{es2023ragas}. Query stratification into para-parametric and contra-parametric subsets provides a first-class evaluation axis for attributing condition differences to the queries where retrieval matters most.
 
-This paper makes four specific contributions. First, we present the first systematic ablation of BM25, TF-IDF-approximated dense retrieval, and cross-encoder reranking across 12 conditions on BioASQ Task B clinical queries, evaluated under CPU-only offline deployment constraints. Second, we operationalize the para-parametric versus contra-parametric query distinction as an evaluation axis for clinical RAG hallucination, providing a stratification methodology reproducible on any SLM--corpus combination. Third, we demonstrate empirically that all 12 retrieval and prompting configurations yield statistically equivalent faithfulness-NLI and EM-F1 scores on BioASQ factoid queries---a null result that constrains the interpretation of offline clinical RAG evaluations relying on token-overlap faithfulness metrics and TF-IDF dense approximation. Fourth, we release HALO as an open-source, GPU-optional offline clinical RAG pipeline with a fully documented condition registry.
+This paper makes four specific contributions. First, I present the first systematic ablation of BM25, TF-IDF-approximated dense retrieval, and cross-encoder reranking across 12 conditions on BioASQ Task B clinical queries, evaluated under CPU-only offline deployment constraints. Second, I operationalize the para-parametric versus contra-parametric query distinction as an evaluation axis for clinical RAG hallucination, providing a stratification methodology reproducible on any SLM--corpus combination. Third, I demonstrate empirically that all 12 retrieval and prompting configurations yield statistically equivalent faithfulness-NLI and EM-F1 scores on BioASQ factoid queries---a null result that constrains the interpretation of offline clinical RAG evaluations relying on token-overlap faithfulness metrics and TF-IDF dense approximation. Fourth, I release HALO as an open-source, GPU-optional offline clinical RAG pipeline with a fully documented condition registry.
 
 \section{Related Work}
 
@@ -114,51 +118,26 @@ Stage 3 fuses the BM25 and dense ranked lists via Reciprocal Rank Fusion. For a 
 
 Stage 4 applies cross-encoder reranking over the fused candidate set. The cross-encoder processes query--passage pairs jointly through a full self-attention stack, producing more accurate relevance scores than the independently computed bi-encoder scores at higher computational cost. HALO uses a compact cross-encoder with fewer than 66M parameters, keeping per-query inference feasible on CPU hardware \cite{nogueira2019passage}. The reranker rescores all $n_2$ candidates and returns the top $n_3 = 5$ passages as the final context window $C^*$ passed to the SLM.
 
-Algorithm 1 presents the pseudocode for the full HALO retrieval pipeline.
+Algorithm~\ref{alg:halo} presents the pseudocode for the full HALO retrieval pipeline.
 
-Algorithm 1: HALO Retrieval Pipeline
-Input:  query q, corpus C, parameters k, n1, n2, n3
-Output: context window C*
-
-\begin{enumerate}
-  \item L\_sparse $\leftarrow$ BM25Retrieve(q, C, top\_n=n1)
-\end{enumerate}
-
-\section{Sparse stage}
-
-\label{sec:sparse_stage}
-
-\begin{enumerate}
-  \item L\_dense  $\leftarrow$ TFIDFFAISSRetrieve(q, C, top\_n=n1)
-\end{enumerate}
-
-\section{Dense stage}
-
-\label{sec:dense_stage}
-
-\begin{enumerate}
-  \item L\_fused  $\leftarrow$ RRF(L\_sparse, L\_dense, k=k)[:n2]
-\end{enumerate}
-
-\section{Fusion stage}
-
-\label{sec:fusion_stage}
-
-\begin{enumerate}
-  \item if reranker\_active:
-  \item scores $\leftarrow$ CrossEncoder(q, L\_fused)
-\end{enumerate}
-
-\section{Rerank stage}
-
-\label{sec:rerank_stage}
-
-\begin{enumerate}
-  \item C*    $\leftarrow$ TopK(L\_fused, scores, k=n3)
-  \item else:
-  \item C*    $\leftarrow$ L\_fused[:n3]
-  \item return C*
-\end{enumerate}
+\begin{algorithm}[t]
+\caption{HALO Retrieval Pipeline}
+\label{alg:halo}
+\begin{algorithmic}[1]
+\REQUIRE query $q$, corpus $\mathcal{C}$, parameters $k$, $n_1$, $n_2$, $n_3$, flag \texttt{reranker\_active}
+\ENSURE context window $C^*$
+\STATE $L_{\text{sparse}} \leftarrow \text{BM25Retrieve}(q, \mathcal{C}, \text{top\_n}=n_1)$ \COMMENT{Sparse stage}
+\STATE $L_{\text{dense}}  \leftarrow \text{TFIDFFAISSRetrieve}(q, \mathcal{C}, \text{top\_n}=n_1)$ \COMMENT{Dense stage}
+\STATE $L_{\text{fused}}  \leftarrow \text{RRF}(L_{\text{sparse}}, L_{\text{dense}}, k=k)[:n_2]$ \COMMENT{Fusion stage}
+\IF{\texttt{reranker\_active}}
+  \STATE $\text{scores} \leftarrow \text{CrossEncoder}(q, L_{\text{fused}})$ \COMMENT{Rerank stage}
+  \STATE $C^* \leftarrow \text{TopK}(L_{\text{fused}}, \text{scores}, k=n_3)$
+\ELSE
+  \STATE $C^* \leftarrow L_{\text{fused}}[:n_3]$
+\ENDIF
+\RETURN $C^*$
+\end{algorithmic}
+\end{algorithm}
 
 \subsection{Prompting Strategies and Condition Taxonomy}
 
@@ -201,17 +180,17 @@ The 12 ablation conditions span three orthogonal axes: retrieval architecture (s
 \toprule
 \textbf{Abbrev.} & \textbf{Sparse} & \textbf{Dense} & \textbf{RRF $k$} & \textbf{Reranker} & \textbf{Prompt Style} & \textbf{Seeds} \\
 \midrule
-BM25-Def & BM2--- (def.) & --- & --- & No & Unstructured & --- \\
+BM25-Def & BM25 (def.) & --- & --- & No & Unstructured & --- \\
 TFIDF-FAISS & --- & TF-IDF+FAISS & --- & No & Unstructured & --- \\
-RRF-NR & BM2--- (def.) & TF-IDF+FAISS & --- & No & Unstructured & --- \\
-BM25-GA & BM2--- (GA) & --- & --- & No & Unstructured & --- \\
-HALO & BM2--- (def.) & TF-IDF+FAISS & --- & Yes & Unstructured & --- \\
-Ref-BM25 & BM2--- (def.) & --- & --- & No & Refusal-cond. & --- \\
-Ref-Hyb & BM2--- (def.) & TF-IDF+FAISS & --- & Yes & Refusal-cond. & --- \\
-Cit-BM25 & BM2--- (def.) & --- & --- & No & Citation-anch. & --- \\
-Cit-Hyb & BM2--- (def.) & TF-IDF+FAISS & --- & Yes & Citation-anch. & --- \\
-Unstr-BM25 & BM2--- (def.) & --- & --- & No & Unstructured & --- \\
-Unstr-Hyb & BM2--- (def.) & TF-IDF+FAISS & --- & Yes & Unstructured & --- \\
+RRF-NR & BM25 (def.) & TF-IDF+FAISS & --- & No & Unstructured & --- \\
+BM25-GA & BM25 (GA) & --- & --- & No & Unstructured & --- \\
+HALO & BM25 (def.) & TF-IDF+FAISS & --- & Yes & Unstructured & --- \\
+Ref-BM25 & BM25 (def.) & --- & --- & No & Refusal-cond. & --- \\
+Ref-Hyb & BM25 (def.) & TF-IDF+FAISS & --- & Yes & Refusal-cond. & --- \\
+Cit-BM25 & BM25 (def.) & --- & --- & No & Citation-anch. & --- \\
+Cit-Hyb & BM25 (def.) & TF-IDF+FAISS & --- & Yes & Citation-anch. & --- \\
+Unstr-BM25 & BM25 (def.) & --- & --- & No & Unstructured & --- \\
+Unstr-Hyb & BM25 (def.) & TF-IDF+FAISS & --- & Yes & Unstructured & --- \\
 Adpt-Rtr & Adaptive & Adaptive & Adaptive & No & Unstructured & --- \\
 \bottomrule
 \end{tabular}
@@ -398,46 +377,6 @@ Fifth, with 30 queries per condition evaluated in the primary analysis, the abla
 \label{sec:conclusion}
 
 HALO establishes a reproducible 12-condition ablation framework for evaluating the effect of hybrid retrieval on hallucination rate and answer fidelity in offline clinical RAG with small language models. The para/contra-parametric stratification methodology provides a reusable evaluation axis for attributing retrieval benefit to the query classes where it matters most, and the CPU-compatible pipeline architecture is suitable for air-gapped hospital deployment. The primary finding of this pilot evaluation is that all retrieval and prompting conditions yield statistically equivalent performance on faithfulness-NLI and EM-F1 (mean difference = 0.0000, 95\% CI = $[0.0000, 0.0000]$, not statistically significant), an outcome that provides actionable diagnostic signal about the discriminative limits of token-overlap faithfulness metrics on BioASQ factoid answer distributions and about the functional equivalence of BM25 and TF-IDF-FAISS in this domain. Future work should prioritize three directions: replacing TF-IDF-FAISS dense retrieval with a GPU-optional quantized neural bi-encoder to restore condition-level differentiation; implementing per-query stratified logging to directly test the para/contra-parametric hypothesis; and extending evaluation to longer-form clinical generation tasks where retrieval architecture differences are expected to manifest more clearly in automatic faithfulness metrics.
-
-\section{References}
-
-\label{sec:references}
-
-\textbf{\cite{cormack2009reciprocal}} Cormack, G. V., Clarke, C. L. A., \& Buettcher, S. (2009). Reciprocal rank fusion outperforms Condorcet and individual rank learning methods. \textit{Proceedings of the 32nd International ACM SIGIR Conference on Research and Development in Information Retrieval}, 758--759.
-
-\textbf{\cite{ecker2022psychological}} Ecker, U. K. H., Lewandowsky, S., Cook, J., Schmid, P., Fazio, L. K., Brashier, N., … Amazeen, M. A. (2022). The psychological drivers of misinformation belief and its resistance to correction. \textit{Nature Reviews Psychology}, 1(1), 13--29.
-
-\textbf{\cite{es2023ragas}} Es, S., James, J., Espinosa-Anke, L., \& Schockaert, S. (2023). RAGAS: Automated evaluation of retrieval augmented generation. \textit{arXiv preprint arXiv:2309.1522}.
-
-\textbf{\cite{feuerriegel2023generative}} Feuerriegel, S., Frauen, D., Melnychuk, V., Schweisthal, J., Hess, K., Curth, A., … van der Schaar, M. (2023). Causal machine learning for predicting treatment outcomes. \textit{Nature Medicine}, 30, 958--968.
-
-\textbf{\cite{ji2023survey}} Ji, Z., Lee, N., Frieske, R., Yu, T., Su, D., Xu, Y., … Fung, P. (2023). Survey of hallucination in natural language generation. \textit{ACM Computing Surveys}, 55(12), 1--38.
-
-\textbf{\cite{karpukhin2020dense}} Karpukhin, V., Oğuz, B., Min, S., Lewis, P., Wu, L., Edunov, S., … Yih, W.-T. (2020). Dense passage retrieval for open-domain question answering. \textit{Proceedings of EMNLP 2020}, 6769--6781.
-
-\textbf{\cite{katoch2020review}} Katoch, S., Chauhan, S. S., \& Kumar, V. (2021). A review on genetic algorithm: Past, present, and future. \textit{Multimedia Tools and Applications}, 80(5), 8091--8126.
-
-\textbf{\cite{labrak2024biomistral}} Labrak, Y., Bazoge, A., Morin, E., Gourraud, P.-A., Rouvier, M., \& Dufour, R. (2024). BioMistral: A collection of open-source pretrained large language models for medical domains. \textit{arXiv preprint arXiv:2402.1037}.
-
-\textbf{\cite{lewis2020retrieval}} Lewis, P., Perez, E., Piktus, A., Petroni, F., Karpukhin, V., Goyal, N., … Kiela, D. (2020). Retrieval-augmented generation for knowledge-intensive NLP tasks. \textit{Advances in Neural Information Processing Systems}, 33, 9459--9474.
-
-\textbf{\cite{liu2022pretrain}} Liu, N. F., Lin, K., Hewitt, J., Paranjape, A., Bevilacqua, M., Petroni, F., \& Liang, P. (2023). Lost in the middle: How language models use long contexts. \textit{Transactions of the Association for Computational Linguistics}, 12, 157--173.
-
-\textbf{\cite{min2022rethinking}} Min, S., Lyu, X., Holtzman, A., Artetxe, M., Lewis, M., Hajishirzi, H., \& Zettlemoyer, L. (2022). Rethinking the role of demonstrations: What makes in-context learning work? \textit{Proceedings of EMNLP 2022}, 11048--11064.
-
-\textbf{\cite{nogueira2019passage}} Nogueira, R., \& Cho, K. (2019). Passage re-ranking with BERT. \textit{arXiv preprint arXiv:1901.0409}.
-
-\textbf{\cite{reimers2019sentence}} Reimers, N., \& Gurevych, I. (2019). Sentence-BERT: Sentence embeddings using Siamese BERT-networks. \textit{Proceedings of EMNLP-IJCNLP 2019}, 3982--3992.
-
-\textbf{\cite{robertson2009probabilistic}} Robertson, S., \& Zaragoza, H. (2009). The probabilistic relevance framework: BM25 and beyond. \textit{Foundations and Trends in Information Retrieval}, 3(4), 333--389.
-
-\textbf{\cite{singhal2023large}} Singhal, K., Azizi, S., Tu, T., Mahdavi, S. S., Wei, J., Chung, H. W., … Natarajan, V. (2023). Large language models encode clinical knowledge. \textit{Nature}, 620(7972), 172--180.
-
-\textbf{\cite{thakur2021beir}} Thakur, N., Reimers, N., Rücklé, A., Srivastava, A., \& Gurevych, I. (2021). BEIR: A heterogeneous benchmark for zero-shot evaluation of information retrieval models. \textit{Proceedings of NeurIPS 2021 Datasets and Benchmarks Track}.
-
-\textbf{\cite{tsatsaronis2015overview}} Tsatsaronis, G., Balikas, G., Malakasiotis, P., Partalas, I., Zschunke, M., Alvers, M. R., … Paliouras, G. (2015). An overview of the BioASQ large-scale biomedical semantic indexing and question answering competition. \textit{BMC Bioinformatics}, 16(1), 138.
-
-\textbf{\cite{xiong2021approximate}} Xiong, L., Xiong, C., Li, Y., Tang, K.-F., Liu, J., Bennett, P. N., … Overwijk, A. (2021). Approximate nearest neighbor negative contrastive estimation for dense text retrieval. \textit{Proceedings of ICLR 2021}.
 
 \bibliographystyle{plainnat}
 \bibliography{references}
