@@ -204,27 +204,26 @@ The 12 ablation conditions span three orthogonal axes: retrieval architecture (s
 
 \begin{table}[ht]
 \centering
-\resizebox{\textwidth}{!}{%
-\begin{tabular}{lllllll}
+\small
+\begin{tabular}{llllll}
 \toprule
-\textbf{Abbrev.} & \textbf{Sparse} & \textbf{Dense} & \textbf{RRF $k$} & \textbf{Reranker} & \textbf{Prompt Style} & \textbf{Seeds} \\
+\textbf{Abbrev.} & \textbf{Sparse} & \textbf{Dense} & \textbf{RRF $k$} & \textbf{Reranker} & \textbf{Prompt Style} \\
 \midrule
-BM25-Def & BM25 (def.) & --- & --- & No & Unstructured & --- \\
-TFIDF-FAISS & --- & TF-IDF+FAISS & --- & No & Unstructured & --- \\
-RRF-NR & BM25 (def.) & TF-IDF+FAISS & --- & No & Unstructured & --- \\
-BM25-GA & BM25 (GA) & --- & --- & No & Unstructured & --- \\
-HALO & BM25 (def.) & TF-IDF+FAISS & --- & Yes & Unstructured & --- \\
-Ref-BM25 & BM25 (def.) & --- & --- & No & Refusal-cond. & --- \\
-Ref-Hyb & BM25 (def.) & TF-IDF+FAISS & --- & Yes & Refusal-cond. & --- \\
-Cit-BM25 & BM25 (def.) & --- & --- & No & Citation-anch. & --- \\
-Cit-Hyb & BM25 (def.) & TF-IDF+FAISS & --- & Yes & Citation-anch. & --- \\
-Unstr-BM25 & BM25 (def.) & --- & --- & No & Unstructured & --- \\
-Unstr-Hyb & BM25 (def.) & TF-IDF+FAISS & --- & Yes & Unstructured & --- \\
-Adpt-Rtr & Adaptive & Adaptive & Adaptive & No & Unstructured & --- \\
+BM25-Def    & BM25 (def.) & ---           & ---      & No  & Unstructured   \\
+TFIDF-FAISS & ---         & TF-IDF+FAISS  & ---      & No  & Unstructured   \\
+RRF-NR      & BM25 (def.) & TF-IDF+FAISS  & 60       & No  & Unstructured   \\
+BM25-GA     & BM25 (GA)   & ---           & ---      & No  & Unstructured   \\
+HALO        & BM25 (def.) & TF-IDF+FAISS  & 60       & Yes & Unstructured   \\
+Ref-BM25    & BM25 (def.) & ---           & ---      & No  & Refusal-cond.  \\
+Ref-Hyb     & BM25 (def.) & TF-IDF+FAISS  & 60       & Yes & Refusal-cond.  \\
+Cit-BM25    & BM25 (def.) & ---           & ---      & No  & Citation-anch. \\
+Cit-Hyb     & BM25 (def.) & TF-IDF+FAISS  & 60       & Yes & Citation-anch. \\
+Unstr-BM25  & BM25 (def.) & ---           & ---      & No  & Unstructured   \\
+Unstr-Hyb   & BM25 (def.) & TF-IDF+FAISS  & 60       & Yes & Unstructured   \\
+Adpt-Rtr    & Adaptive    & Adaptive      & Adaptive & No  & Unstructured   \\
 \bottomrule
 \end{tabular}
-}
-\caption{Comparison of Abbrev. across Sparse, Dense, RRF $k$, Reranker}
+\caption{Hyperparameter configuration for all 12 HALO ablation conditions. All conditions share $n_1=50$, $n_2=20$, $n_3=5$, temperature $= 0.0$, max context $= 2048$ tokens, and seeds $\{42, 123, 456, 789, 1024\}$.}
 \label{tab:1}
 \end{table}
 
