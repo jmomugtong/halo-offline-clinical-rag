@@ -83,6 +83,35 @@ Hybrid retrieval, combining sparse and dense ranked lists, has emerged as a prac
 
 Hallucination in language models---the generation of fluent text not grounded in or contradicting the provided context---has emerged as a central reliability concern for clinical deployment \cite{ji2023survey}. The phenomenon manifests in two primary forms: intrinsic hallucination, where model output contradicts the retrieved context, and extrinsic hallucination, where output introduces claims absent from the context \cite{feuerriegel2023generative}. Prior work has developed several automatic faithfulness metrics with varying sensitivity to these failure modes: token-overlap measures such as ROUGE capture surface-level fidelity but are insensitive to semantically contradictory paraphrases; NLI-based faithfulness metrics apply textual entailment classifiers to assess whether each claim in the generated answer is entailed by the retrieved context, providing a direct hallucination signal grounded in formal logical relations \cite{es2023ragas}. The RAGAS NLI faithfulness metric, which uses a DeBERTa-large cross-encoder fine-tuned on NLI benchmarks, has demonstrated stronger correlation with human hallucination judgments than token-overlap alternatives on biomedical and general-domain benchmarks. Beyond faithfulness, the distinction between parametric knowledge conflicts and retrieval grounding failures has been studied in the context of knowledge-editing experiments: prior work has shown that language models preferentially activate parametric knowledge when it conflicts with retrieved evidence, a tendency that suppresses retrieval benefit even when retrieved passages are highly relevant \cite{min2022rethinking}. The operationalization of this parametric-versus-retrieved distinction as an evaluation axis---the para/contra-parametric stratification adopted in HALO---has not been applied to clinical RAG hallucination benchmarking, leaving open the question of whether hybrid retrieval improvements are concentrated in the contra-parametric subset. Prior work examining misinformation persistence and belief revision has documented the robustness of prior beliefs to corrective information \cite{ecker2022psychological}, a finding that parallels the SLM knowledge-conflict problem and motivates the stratification approach adopted here.
 
+\subsection{Positioning of This Work}
+
+\label{sec:positioning}
+
+Table~\ref{tab:related} summarises representative prior work along the four axes most relevant to HALO: retrieval architecture, evaluation benchmark, primary metric, and offline (CPU-free) deployability. The table makes the source of surprise explicit: prior work consistently reports retrieval improvements measured via retrieval-centric metrics (MRR, nDCG, EM) on general-domain benchmarks with GPU-resident systems. HALO is the first evaluation to measure the \emph{downstream hallucination} effect of the full BM25-to-hybrid-to-reranked progression on a clinical benchmark under strict CPU-only constraints, with faithfulness-NLI as the primary metric. The gap between the retrieval-MRR gains reported in prior work and the flat faithfulness-NLI results reported here is precisely what motivates the metric saturation and TF-IDF approximation diagnoses in Section~\ref{sec:discussion}.
+
+\begin{table}[t]
+\centering
+\resizebox{\textwidth}{!}{%
+\begin{tabular}{llllll}
+\toprule
+\textbf{Work} & \textbf{Retrieval} & \textbf{Benchmark (domain)} & \textbf{Primary metric} & \textbf{CPU-only} & \textbf{Finding relevant to HALO} \\
+\midrule
+Lewis et al.\ \cite{lewis2020retrieval}      & Dense (DPR)                   & NQ, TriviaQA (general)       & EM                     & No           & RAG outperforms closed-book; dense $>$ BM25 on EM \\
+Karpukhin et al.\ \cite{karpukhin2020dense}  & Dense (bi-encoder)            & NQ, TriviaQA (general)       & Top-20 recall          & No           & Dense bi-encoder substantially outperforms BM25 recall \\
+Cormack et al.\ \cite{cormack2009reciprocal} & Hybrid (RRF)                  & TREC (general)               & MAP, nDCG              & Yes          & RRF improves over individual rankers without supervision \\
+Nogueira \& Cho \cite{nogueira2019passage}   & BM25 + cross-encoder          & MS-MARCO (general)           & MRR@10                 & No           & BERT reranking substantially improves BM25 precision \\
+Thakur et al.\ \cite{thakur2021beir}         & Sparse + Dense (zero-shot)    & BEIR incl.\ BioASQ (multi)   & nDCG@10                & Sparse only  & No single retriever dominates; biomedical domain shows largest gaps \\
+Singhal et al.\ \cite{singhal2023large}      & None (parametric)             & MultiMedQA (clinical)        & Accuracy               & No           & LLMs encode clinical knowledge; grounding required for safety \\
+Labrak et al.\ \cite{labrak2024biomistral}   & Dense (BioMistral embeds)     & BioASQ, MedQA (clinical)     & Accuracy               & Partial      & Domain pretraining improves clinical QA; retrieval adds accuracy \\
+\midrule
+\textbf{HALO (this work)}                    & BM25 / hybrid / reranker (12 cond.) & BioASQ Task B (clinical) & Faithfulness-NLI, EM-F1 & \textbf{Yes} & All 12 conditions statistically equivalent; metric saturates on factoid answers \\
+\bottomrule
+\end{tabular}
+}
+\caption{Representative prior retrieval and clinical RAG work compared on axes relevant to HALO. Prior work reports improvements via retrieval-centric metrics on general-domain benchmarks with GPU-dependent systems. HALO is the first CPU-only ablation measuring downstream faithfulness-NLI across a full sparse-to-hybrid-to-reranked condition range on a clinical benchmark.}
+\label{tab:related}
+\end{table}
+
 \section{Method}
 
 \label{sec:method}
