@@ -64,7 +64,7 @@ The integration of retrieval mechanisms with language model generation has attra
 
 \label{sec:hybrid_retrieval_and_reciprocal_rank_fus}
 
-Hybrid retrieval, combining sparse and dense ranked lists, has emerged as a practical strategy for improving recall without discarding the lexical matching strengths of BM25. Prior work has established that BM25 and dense encoders exhibit complementary failure modes: BM25 struggles with paraphrastic and out-of-vocabulary queries while dense models struggle with rare entity names and exact-match lookups \cite{thakur2021beir}. Reciprocal Rank Fusion, which combines ranked lists by summing inverse ranks with a smoothing constant \textit{k}, has been shown to provide robust improvements over either single modality on MS-MARCO and TREC benchmarks without requiring supervised interpolation weights, making it particularly attractive for offline deployments where no labeled fusion training data is available \cite{cormack2009reciprocal}. The sensitivity of RRF performance to the \textit{k} parameter has been analyzed in prior work, with values in the range \textit{k} ∈ $[30, 100]$ producing stable results across diverse query sets; this parameter sensitivity has not been characterized on clinical biomedical query sets where query length distributions and vocabulary characteristics differ from general-domain benchmarks. Dense retrieval architectures have progressed from dual-encoder DPR models trained with in-batch negatives \cite{karpukhin2020dense} to more sophisticated contrastive training regimes and late-interaction architectures; prior work has demonstrated that biomedical domain fine-tuning provides substantial gains in clinical retrieval tasks compared to general-domain initialization \cite{xiong2021approximate}. Cross-encoder rerankers---which process query--passage pairs jointly through a full self-attention stack---provide a quality ceiling above bi-encoders at the cost of higher per-document inference time, and prior work has shown that reranking a candidate set of 50--100 passages using a compact cross-encoder provides the majority of quality benefit with manageable latency overhead \cite{nogueira2019passage}. HALO extends this body of work by applying RRF fusion with cross-encoder reranking specifically to BioASQ clinical queries and measuring downstream SLM hallucination rather than retrieval MRR in isolation.
+Hybrid retrieval, combining sparse and dense ranked lists, has emerged as a practical strategy for improving recall without discarding the lexical matching strengths of BM25. Prior work has established that BM25 and dense encoders exhibit complementary failure modes: BM25 struggles with paraphrastic and out-of-vocabulary queries while dense models struggle with rare entity names and exact-match lookups \cite{thakur2021beir}. Reciprocal Rank Fusion, which combines ranked lists by summing inverse ranks with a smoothing constant \textit{k}, has been shown to provide robust improvements over either single modality on MS-MARCO and TREC benchmarks without requiring supervised interpolation weights, making it particularly attractive for offline deployments where no labeled fusion training data is available \cite{cormack2009reciprocal}. The sensitivity of RRF performance to the \textit{k} parameter has been analyzed in prior work, with values in the range \textit{k} $\in$ $[30, 100]$ producing stable results across diverse query sets; this parameter sensitivity has not been characterized on clinical biomedical query sets where query length distributions and vocabulary characteristics differ from general-domain benchmarks. Dense retrieval architectures have progressed from dual-encoder DPR models trained with in-batch negatives \cite{karpukhin2020dense} to more sophisticated contrastive training regimes and late-interaction architectures; prior work has demonstrated that biomedical domain fine-tuning provides substantial gains in clinical retrieval tasks compared to general-domain initialization \cite{xiong2021approximate}. Cross-encoder rerankers---which process query--passage pairs jointly through a full self-attention stack---provide a quality ceiling above bi-encoders at the cost of higher per-document inference time, and prior work has shown that reranking a candidate set of 50--100 passages using a compact cross-encoder provides the majority of quality benefit with manageable latency overhead \cite{nogueira2019passage}. HALO extends this body of work by applying RRF fusion with cross-encoder reranking specifically to BioASQ clinical queries and measuring downstream SLM hallucination rather than retrieval MRR in isolation.
 
 \begin{figure}[t]
 \centering
@@ -272,7 +272,7 @@ The central finding of this preliminary evaluation is that all 12 retrieval cond
 \centering
 \begin{tabular}{lll}
 \toprule
-\textbf{Condition} & \textbf{Faithfulness-NLI ↑} & \textbf{EM-F1 ↑} \\
+\textbf{Condition} & \textbf{Faithfulness-NLI $\\uparrow$} & \textbf{EM-F1 $\\uparrow$} \\
 \midrule
 BM25-Def & \textbf{0.8400} $\pm$ 0.0000 & \textbf{0.3979} $\pm$ 0.0000 \\
 TFIDF-FAISS & \textbf{0.8400} $\pm$ 0.0000 & \textbf{0.3979} $\pm$ 0.0000 \\
@@ -288,7 +288,7 @@ Unstr-Hyb & \textbf{0.8400} $\pm$ 0.0000 & \textbf{0.3979} $\pm$ 0.0000 \\
 Adpt-Rtr & \textbf{0.8400} $\pm$ 0.0000 & \textbf{0.3979} $\pm$ 0.0000 \\
 \bottomrule
 \end{tabular}
-\caption{Comparison of Condition across Faithfulness-NLI ↑, EM-F1 ↑}
+\caption{Comparison of Condition across Faithfulness-NLI $\\uparrow$, EM-F1 $\\uparrow$}
 \label{tab:2}
 \end{table}
 
@@ -318,7 +318,7 @@ Table 3 reports the per-regime breakdown for para-parametric and contra-parametr
 \centering
 \begin{tabular}{llll}
 \toprule
-\textbf{Condition} & \textbf{Regime} & \textbf{Faithfulness-NLI ↑} & \textbf{EM-F1 ↑} \\
+\textbf{Condition} & \textbf{Regime} & \textbf{Faithfulness-NLI $\\uparrow$} & \textbf{EM-F1 $\\uparrow$} \\
 \midrule
 BM25-Def & Para-parametric & --- & --- \\
 BM25-Def & Contra-parametric & --- & --- \\
@@ -327,7 +327,7 @@ HALO & Contra-parametric & --- & --- \\
 All conditions & Overall & 0.8400 $\pm$ 0.0000 & 0.3979 $\pm$ 0.0000 \\
 \bottomrule
 \end{tabular}
-\caption{Comparison of Condition across Regime, Faithfulness-NLI ↑, EM-F1 ↑}
+\caption{Comparison of Condition across Regime, Faithfulness-NLI $\\uparrow$, EM-F1 $\\uparrow$}
 \label{tab:3}
 \end{table}
 
@@ -340,14 +340,14 @@ Table 4 reports the primary statistical comparison: hybrid retrieval versus spar
 \resizebox{\textwidth}{!}{%
 \begin{tabular}{lllll}
 \toprule
-\textbf{Comparison} & \textbf{Mean Diff} & \textbf{Std Diff} & \textbf{CI₉₅} & \textbf{Significant?} \\
+\textbf{Comparison} & \textbf{Mean Diff} & \textbf{Std Diff} & \textbf{CI$_{9}$$_{5}$} & \textbf{Significant?} \\
 \midrule
-Hybrid − BM25-Def (Faith.-NLI) & 0.0000 & 0.0000 & [0.0000, 0.0000] & No \\
-Hybrid − BM25-Def (EM-F1) & 0.0000 & 0.0000 & [0.0000, 0.0000] & No \\
+Hybrid -- BM25-Def (Faith.-NLI) & 0.0000 & 0.0000 & $[0.0000, 0.0000]$ & No \\
+Hybrid -- BM25-Def (EM-F1) & 0.0000 & 0.0000 & $[0.0000, 0.0000]$ & No \\
 \bottomrule
 \end{tabular}
 }
-\caption{Comparison of Comparison across Mean Diff, Std Diff, CI₉₅, Significant?}
+\caption{Comparison of Comparison across Mean Diff, Std Diff, CI$_{9}$$_{5}$, Significant?}
 \label{tab:4}
 \end{table}
 
